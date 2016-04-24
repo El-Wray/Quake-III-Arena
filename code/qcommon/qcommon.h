@@ -134,11 +134,6 @@ typedef enum {
 	NA_BROADCAST_IPX
 } netadrtype_t;
 
-typedef enum {
-	NS_CLIENT,
-	NS_SERVER
-} netsrc_t;
-
 typedef struct {
 	netadrtype_t	type;
 
@@ -177,30 +172,7 @@ void		NET_Sleep(int msec);
 Netchan handles packet fragmentation and out of order / duplicate suppression
 */
 
-typedef struct {
-	netsrc_t	sock;
 
-	int			dropped;			// between last packet and previous
-
-	netadr_t	remoteAddress;
-	int			qport;				// qport value to write when transmitting
-
-	// sequencing variables
-	int			incomingSequence;
-	int			outgoingSequence;
-
-	// incoming fragment assembly buffer
-	int			fragmentSequence;
-	int			fragmentLength;	
-	byte		fragmentBuffer[MAX_MSGLEN];
-
-	// outgoing fragment buffer
-	// we need to space out the sending of large fragmented messages
-	qboolean	unsentFragments;
-	int			unsentFragmentStart;
-	int			unsentLength;
-	byte		unsentBuffer[MAX_MSGLEN];
-} netchan_t;
 
 void Netchan_Init( int qport );
 void Netchan_Setup( netsrc_t sock, netchan_t *chan, netadr_t adr, int qport );
@@ -246,34 +218,10 @@ extern int demo_protocols[];
 									// run multiple servers
 
 
-// the svc_strings[] array in cl_parse.c should mirror this
-//
-// server to client
-//
-enum svc_ops_e {
-	svc_bad,
-	svc_nop,
-	svc_gamestate,
-	svc_configstring,			// [short] [string] only in gamestate messages
-	svc_baseline,				// only in gamestate messages
-	svc_serverCommand,			// [string] to be executed by client game module
-	svc_download,				// [short] size [size bytes]
-	svc_snapshot,
-	svc_EOF
-};
 
 
-//
-// client to server
-//
-enum clc_ops_e {
-	clc_bad,
-	clc_nop, 		
-	clc_move,				// [[usercmd_t]
-	clc_moveNoDelta,		// [[usercmd_t]
-	clc_clientCommand,		// [string] message
-	clc_EOF
-};
+
+
 
 /*
 ==============================================================

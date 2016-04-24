@@ -45,12 +45,6 @@ typedef struct svEntity_s {
 	int			snapshotCounter;	// used to prevent double adding from portal views
 } svEntity_t;
 
-typedef enum {
-	SS_DEAD,			// no map loaded
-	SS_LOADING,			// spawning level entities
-	SS_GAME				// actively running
-} serverState_t;
-
 typedef struct {
 	serverState_t	state;
 	qboolean		restarting;			// if true, send configstring changes during SS_LOADING
@@ -80,31 +74,6 @@ typedef struct {
 	int				restartTime;
 } server_t;
 
-
-
-
-
-typedef struct {
-	int				areabytes;
-	byte			areabits[MAX_MAP_AREA_BYTES];		// portalarea visibility bits
-	playerState_t	ps;
-	int				num_entities;
-	int				first_entity;		// into the circular sv_packet_entities[]
-										// the entities MUST be in increasing state number
-										// order, otherwise the delta compression will fail
-	int				messageSent;		// time the message was transmitted
-	int				messageAcked;		// time the message was acked
-	int				messageSize;		// used to rate drop packets
-} clientSnapshot_t;
-
-typedef enum {
-	CS_FREE,		// can be reused for a new connection
-	CS_ZOMBIE,		// client has been disconnected, but don't reuse
-					// connection for a couple seconds
-	CS_CONNECTED,	// has been assigned to a client_t, but no gamestate yet
-	CS_PRIMED,		// gamestate has been sent, but client hasn't sent a usercmd
-	CS_ACTIVE		// client is fully in game
-} clientState_t;
 
 typedef struct netchan_buffer_s {
 	msg_t           msg;
@@ -177,37 +146,8 @@ typedef struct client_s {
 
 #define	AUTHORIZE_TIMEOUT	5000
 
-typedef struct {
-	netadr_t	adr;
-	int			challenge;
-	int			time;				// time the last packet was sent to the autherize server
-	int			pingTime;			// time the challenge response was sent to client
-	int			firstTime;			// time the adr was first used, for authorize timeout checks
-	qboolean	connected;
-} challenge_t;
-
 
 #define	MAX_MASTERS	8				// max recipients for heartbeat packets
-
-
-// this structure will be cleared only when the game dll changes
-typedef struct {
-	qboolean	initialized;				// sv_init has completed
-
-	int			time;						// will be strictly increasing across level changes
-
-	int			snapFlagServerBit;			// ^= SNAPFLAG_SERVERCOUNT every SV_SpawnServer()
-
-	client_t	*clients;					// [sv_maxclients->integer];
-	int			numSnapshotEntities;		// sv_maxclients->integer*PACKET_BACKUP*MAX_PACKET_ENTITIES
-	int			nextSnapshotEntities;		// next snapshotEntities to use
-	entityState_t	*snapshotEntities;		// [numSnapshotEntities]
-	int			nextHeartbeatTime;
-	challenge_t	challenges[MAX_CHALLENGES];	// to prevent invalid IPs from connecting
-	netadr_t	redirectAddress;			// for rcon return messages
-
-	netadr_t	authorizeAddress;			// for rcon return messages
-} serverStatic_t;
 
 //=============================================================================
 
