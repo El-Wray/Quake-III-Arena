@@ -1,25 +1,3 @@
-/*
-===========================================================================
-Copyright (C) 1999-2005 Id Software, Inc.
-
-This file is part of Quake III Arena source code.
-
-Quake III Arena source code is free software; you can redistribute it
-and/or modify it under the terms of the GNU General Public License as
-published by the Free Software Foundation; either version 2 of the License,
-or (at your option) any later version.
-
-Quake III Arena source code is distributed in the hope that it will be
-useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with Foobar; if not, write to the Free Software
-Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-===========================================================================
-*/
-
 #include "../game/q_shared.h"
 #include "qcommon.h"
 
@@ -93,91 +71,6 @@ void Netchan_Setup( netsrc_t sock, netchan_t *chan, netadr_t adr, int qport ) {
 	chan->outgoingSequence = 1;
 }
 
-// TTimo: unused, commenting out to make gcc happy
-#if 0
-/*
-==============
-Netchan_ScramblePacket
-
-A probably futile attempt to make proxy hacking somewhat
-more difficult.
-==============
-*/
-#define	SCRAMBLE_START	6
-static void Netchan_ScramblePacket( msg_t *buf ) {
-	unsigned	seed;
-	int			i, j, c, mask, temp;
-	int			seq[MAX_PACKETLEN];
-
-	seed = ( LittleLong( *(unsigned *)buf->data ) * 3 ) ^ ( buf->cursize * 123 );
-	c = buf->cursize;
-	if ( c <= SCRAMBLE_START ) {
-		return;
-	}
-	if ( c > MAX_PACKETLEN ) {
-		Com_Error( ERR_DROP, "MAX_PACKETLEN" );
-	}
-
-	// generate a sequence of "random" numbers
-	for (i = 0 ; i < c ; i++) {
-		seed = (119 * seed + 1);
-		seq[i] = seed;
-	}
-
-	// transpose each character
-	for ( mask = 1 ; mask < c-SCRAMBLE_START ; mask = ( mask << 1 ) + 1 ) {
-	}
-	mask >>= 1;
-	for (i = SCRAMBLE_START ; i < c ; i++) {
-		j = SCRAMBLE_START + ( seq[i] & mask );
-		temp = buf->data[j];
-		buf->data[j] = buf->data[i];
-		buf->data[i] = temp;
-	}
-
-	// byte xor the data after the header
-	for (i = SCRAMBLE_START ; i < c ; i++) {
-		buf->data[i] ^= seq[i];
-	}
-}
-
-static void Netchan_UnScramblePacket( msg_t *buf ) {
-	unsigned	seed;
-	int			i, j, c, mask, temp;
-	int			seq[MAX_PACKETLEN];
-
-	seed = ( LittleLong( *(unsigned *)buf->data ) * 3 ) ^ ( buf->cursize * 123 );
-	c = buf->cursize;
-	if ( c <= SCRAMBLE_START ) {
-		return;
-	}
-	if ( c > MAX_PACKETLEN ) {
-		Com_Error( ERR_DROP, "MAX_PACKETLEN" );
-	}
-
-	// generate a sequence of "random" numbers
-	for (i = 0 ; i < c ; i++) {
-		seed = (119 * seed + 1);
-		seq[i] = seed;
-	}
-
-	// byte xor the data after the header
-	for (i = SCRAMBLE_START ; i < c ; i++) {
-		buf->data[i] ^= seq[i];
-	}
-
-	// transpose each character in reverse order
-	for ( mask = 1 ; mask < c-SCRAMBLE_START ; mask = ( mask << 1 ) + 1 ) {
-	}
-	mask >>= 1;
-	for (i = c-1 ; i >= SCRAMBLE_START ; i--) {
-		j = SCRAMBLE_START + ( seq[i] & mask );
-		temp = buf->data[j];
-		buf->data[j] = buf->data[i];
-		buf->data[i] = temp;
-	}
-}
-#endif
 
 /*
 =================
@@ -313,6 +206,19 @@ qboolean Netchan_Process( netchan_t *chan, msg_t *msg ) {
 	// get sequence numbers		
 	MSG_BeginReadingOOB( msg );
 	sequence = MSG_ReadLong( msg );
+	
+	//
+	// discard out of order or duplicated packets
+	//
+	if ( sequence <= chan->incomingSequence ) {
+		if ( showdrop->integer || showpackets->integer ) {
+			Com_Printf( "%s:Out of order packet %i at %i\n"
+				, NET_AdrToString( chan->remoteAddress )
+				,  sequence
+				, chan->incomingSequence );
+		}
+		return qfalse;
+	}
 
 	// check for fragment information
 	if ( sequence & FRAGMENT_BIT ) {
@@ -349,19 +255,6 @@ qboolean Netchan_Process( netchan_t *chan, msg_t *msg ) {
 				, msg->cursize
 				, sequence );
 		}
-	}
-
-	//
-	// discard out of order or duplicated packets
-	//
-	if ( sequence <= chan->incomingSequence ) {
-		if ( showdrop->integer || showpackets->integer ) {
-			Com_Printf( "%s:Out of order packet %i at %i\n"
-				, NET_AdrToString( chan->remoteAddress )
-				,  sequence
-				, chan->incomingSequence );
-		}
-		return qfalse;
 	}
 
 	//

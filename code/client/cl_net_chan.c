@@ -1,28 +1,46 @@
-/*
-===========================================================================
-Copyright (C) 1999-2005 Id Software, Inc.
-
-This file is part of Quake III Arena source code.
-
-Quake III Arena source code is free software; you can redistribute it
-and/or modify it under the terms of the GNU General Public License as
-published by the Free Software Foundation; either version 2 of the License,
-or (at your option) any later version.
-
-Quake III Arena source code is distributed in the hope that it will be
-useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with Foobar; if not, write to the Free Software
-Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-===========================================================================
-*/
-
 #include "../game/q_shared.h"
 #include "../qcommon/qcommon.h"
 #include "client.h"
+
+/*
+=================
+CL_Netchan_TransmitNextFragment
+=================
+*/
+void CL_Netchan_TransmitNextFragment( netchan_t *chan ) {
+	Netchan_TransmitNextFragment( chan );
+}
+
+/*
+===============
+CL_Netchan_Transmit
+================
+*/
+void CL_Netchan_Transmit( netchan_t *chan, msg_t* msg ) {
+	MSG_WriteByte( msg, clc_EOF );
+
+	CL_Netchan_Encode( msg );
+	Netchan_Transmit( chan, msg->cursize, msg->data );
+}
+
+extern 	int oldsize;
+int newsize = 0;
+
+/*
+=================
+CL_Netchan_Process
+=================
+*/
+qboolean CL_Netchan_Process( netchan_t *chan, msg_t *msg ) {
+	int ret;
+
+	ret = Netchan_Process( chan, msg );
+	if (!ret)
+		return qfalse;
+	CL_Netchan_Decode( msg );
+	newsize += msg->cursize;
+	return qtrue;
+}
 
 /*
 ==============
@@ -124,44 +142,4 @@ static void CL_Netchan_Decode( msg_t *msg ) {
 		// decode the data with this key
 		*(msg->data + i) = *(msg->data + i) ^ key;
 	}
-}
-
-/*
-=================
-CL_Netchan_TransmitNextFragment
-=================
-*/
-void CL_Netchan_TransmitNextFragment( netchan_t *chan ) {
-	Netchan_TransmitNextFragment( chan );
-}
-
-/*
-===============
-CL_Netchan_Transmit
-================
-*/
-void CL_Netchan_Transmit( netchan_t *chan, msg_t* msg ) {
-	MSG_WriteByte( msg, clc_EOF );
-
-	CL_Netchan_Encode( msg );
-	Netchan_Transmit( chan, msg->cursize, msg->data );
-}
-
-extern 	int oldsize;
-int newsize = 0;
-
-/*
-=================
-CL_Netchan_Process
-=================
-*/
-qboolean CL_Netchan_Process( netchan_t *chan, msg_t *msg ) {
-	int ret;
-
-	ret = Netchan_Process( chan, msg );
-	if (!ret)
-		return qfalse;
-	CL_Netchan_Decode( msg );
-	newsize += msg->cursize;
-	return qtrue;
 }
